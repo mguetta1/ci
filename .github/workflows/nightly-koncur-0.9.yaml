@@ -1,8 +1,9 @@
 name: Run Koncur nightly (Release 0.9)
 
 on:
-  schedule:
-    - cron: "5 3 * * *"
+  push:
+    branches:
+      - release-0.9
   workflow_call:
     inputs:
       branch:

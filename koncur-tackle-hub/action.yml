@@ -1,20 +1,29 @@
 name: Koncur Tackle Hub
-on:
-  workflow_call:
-    inputs:
-      skip_maven:
-        description: "Whether to setup access to the testing maven packages"
-        default: true
-        type: boolean
-      image_pattern:
-        description: The pattern used to download the image's that have been built to test
-        required: false
-        type: string
-      ref:
-        description: The ref of koncur to use for testing
-        required: false
-        type: string
-        default: main
+description: "Run Koncur tests with Tackle Hub"
+
+inputs:
+  skip_maven:
+    description: "Whether to setup access to the testing maven packages"
+    default: true
+    type: boolean
+  image_pattern:
+    description: The pattern used to download the image's that have been built to test
+    required: false
+    type: string
+  image_tag:
+    description: "Pull images from quay.io with this tag (e.g., 'release-0.9'). Skips artifact download when set."
+    required: false
+    type: string
+  ref:
+    description: The ref of koncur to use for testing
+    required: false
+    type: string
+    default: main
+  koncur_repo:
+    description: "The koncur repository to checkout (e.g., 'mguetta1/koncur' for fork PRs)"
+    required: false
+    type: string
+    default: konveyor/koncur
 
 runs:
   using: "composite"
@@ -23,7 +32,7 @@ runs:
       uses: actions/checkout@v6
       with:
         ref: ${{ inputs.ref }}
-        repository: konveyor/koncur
+        repository: ${{ inputs.koncur_repo }}
 
     - name: Setup Go
       uses: actions/setup-go@v6
@@ -50,28 +59,48 @@ runs:
       shell: bash
       run: make kind-create
 
+    ## Pull images directly from quay.io when image_tag is provided
+    - name: Pull release images from quay.io
+      if: ${{ inputs.image_tag }}
+      shell: bash
+      run: |
+        echo "Pulling images with tag: ${{ inputs.image_tag }}"
 
-      
+        # Pull and load images into Kind cluster
+        for img in kantra tackle2-hub tackle2-addon-analyzer tackle2-addon-discovery tackle2-addon-platform java-external-provider c-sharp-provider generic-external-provider; do
+          echo "Pulling quay.io/konveyor/${img}:${{ inputs.image_tag }}"
+          docker pull quay.io/konveyor/${img}:${{ inputs.image_tag }} || true
+          kind load docker-image quay.io/konveyor/${img}:${{ inputs.image_tag }} --name koncur-test || true
+        done
+
+        echo "RUNNER_IMG=quay.io/konveyor/kantra:${{ inputs.image_tag }}" >> $GITHUB_ENV
+        echo "HUB=quay.io/konveyor/tackle2-hub:${{ inputs.image_tag }}" >> $GITHUB_ENV
+        echo "ANALYZER_ADDON=quay.io/konveyor/tackle2-addon-analyzer:${{ inputs.image_tag }}" >> $GITHUB_ENV
+        echo "DISCOVERY_ADDON=quay.io/konveyor/tackle2-addon-discovery:${{ inputs.image_tag }}" >> $GITHUB_ENV
+        echo "PLATFORM_ADDON=quay.io/konveyor/tackle2-addon-platform:${{ inputs.image_tag }}" >> $GITHUB_ENV
+        echo "JAVA_PROVIDER_IMG=quay.io/konveyor/java-external-provider:${{ inputs.image_tag }}" >> $GITHUB_ENV
+        echo "CSHARP_PROVIDER_IMG=quay.io/konveyor/c-sharp-provider:${{ inputs.image_tag }}" >> $GITHUB_ENV
+        echo "GENERIC_PROVIDER_IMG=quay.io/konveyor/generic-external-provider:${{ inputs.image_tag }}" >> $GITHUB_ENV
 
     - name: Download Images from artifacts
       id: download-artifacts
       continue-on-error: true
-      if: ${{ inputs.image_pattern }}
+      if: ${{ inputs.image_pattern && !inputs.image_tag }}
       uses: actions/download-artifact@v4
       with:
         pattern: ${{ inputs.image_pattern }}
         path: ${{ runner.temp }}/images
         merge-multiple: true
 
-    - name: Load images into kind cluster 
-      if: ${{ inputs.image_pattern }}
+    - name: Load images into kind cluster
+      if: ${{ inputs.image_pattern && !inputs.image_tag }}
       shell: bash
       run: |
         ${GITHUB_ACTION_PATH}/load_img.sh ${RUNNER_TEMP}/images
         rm -rf ${RUNNER_TEMP}/images
-    
+
     - name: Check and download missing images
-      if: ${{ steps.download-artifacts.outcome == 'failure' || steps.download-artifacts.outcome == 'success' }}
+      if: ${{ !inputs.image_tag && (steps.download-artifacts.outcome == 'failure' || steps.download-artifacts.outcome == 'success') }}
       env:
         GH_TOKEN: ${{ github.token }}
       shell: bash

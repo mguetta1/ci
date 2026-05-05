@@ -1,4 +1,5 @@
 name: Koncur Kantra
+description: "Run Koncur tests with Kantra"
 
 inputs:
   skip_maven:
@@ -13,11 +14,20 @@ inputs:
     description: The pattern used to download the image's that have been built to test
     required: false
     type: string
+  image_tag:
+    description: "Pull images from quay.io with this tag (e.g., 'release-0.9'). Skips artifact download when set."
+    required: false
+    type: string
   ref:
     description: The ref of koncur to use for testing
     required: false
     type: string
     default: main
+  koncur_repo:
+    description: "The koncur repository to checkout (e.g., 'mguetta1/koncur' for fork PRs)"
+    required: false
+    type: string
+    default: konveyor/koncur
 
 runs:
   using: "composite"
@@ -38,9 +48,9 @@ runs:
       run: |
         choco install podman-cli
         podman machine init --rootful --memory 10240 --cpus 3
-        podman machine start 
+        podman machine start
 
-    - name: Also add local/bin to windows path and get host wsl ip 
+    - name: Also add local/bin to windows path and get host wsl ip
       if: ${{ inputs.os == 'windows' }}
       shell: powershell
       run: |
@@ -62,19 +72,33 @@ runs:
         network_cmd_options = ["allow_host_loopback=true"]
         EOF
 
-
     - name: Verify local/bin is on the path
       shell: bash
       run: |
         mkdir -p $HOME/.local/bin
         echo $HOME/.local/bin >> $GITHUB_PATH
-      
-      ## Loading images
-    
+
+    ## Pull images directly from quay.io when image_tag is provided
+    - name: Pull release images from quay.io
+      if: ${{ inputs.image_tag }}
+      shell: bash
+      run: |
+        echo "Pulling images with tag: ${{ inputs.image_tag }}"
+        podman pull quay.io/konveyor/kantra:${{ inputs.image_tag }}
+        podman pull quay.io/konveyor/c-sharp-provider:${{ inputs.image_tag }}
+        podman pull quay.io/konveyor/java-external-provider:${{ inputs.image_tag }}
+        podman pull quay.io/konveyor/generic-external-provider:${{ inputs.image_tag }}
+
+        echo "RUNNER_IMG=quay.io/konveyor/kantra:${{ inputs.image_tag }}" >> $GITHUB_ENV
+        echo "CSHARP_PROVIDER_IMG=quay.io/konveyor/c-sharp-provider:${{ inputs.image_tag }}" >> $GITHUB_ENV
+        echo "JAVA_PROVIDER_IMG=quay.io/konveyor/java-external-provider:${{ inputs.image_tag }}" >> $GITHUB_ENV
+        echo "GENERIC_PROVIDER_IMG=quay.io/konveyor/generic-external-provider:${{ inputs.image_tag }}" >> $GITHUB_ENV
+
+    ## Loading images from artifacts (only when image_tag is not set)
     - name: Download Images from artifacts
       id: download-artifacts
-      continue-on-error: true 
-      if: ${{ inputs.image_pattern }}
+      continue-on-error: true
+      if: ${{ inputs.image_pattern && !inputs.image_tag }}
       uses: actions/download-artifact@v4
       with:
         pattern: ${{ inputs.image_pattern }}
@@ -82,15 +106,15 @@ runs:
         merge-multiple: true
 
     - name: Load images into podman
-      if: ${{ inputs.image_pattern }}
+      if: ${{ inputs.image_pattern && !inputs.image_tag }}
       shell: bash
       run: |
         ${GITHUB_ACTION_PATH}/load_img.sh ${RUNNER_TEMP}/images
         rm -rf ${RUNNER_TEMP}/images
 
-    ## Run this check only when the downloading was not skipped.
+    ## Run this check only when the downloading was not skipped and image_tag is not set
     - name: Check and download missing images
-      if: ${{ steps.download-artifacts.outcome == 'failure' || steps.download-artifacts.outcome == 'success' }}
+      if: ${{ !inputs.image_tag && (steps.download-artifacts.outcome == 'failure' || steps.download-artifacts.outcome == 'success') }}
       env:
         GH_TOKEN: ${{ github.token }}
       shell: bash
@@ -129,13 +153,13 @@ runs:
     - name: Checkout repo
       uses: actions/checkout@v6
       with:
-        repository: konveyor/koncur
+        repository: ${{ inputs.koncur_repo }}
         ref: ${{ inputs.ref }}
 
     - name: Setup go
       uses: actions/setup-go@v6
       with:
-        go-version: '1.25'
+        go-version: "1.25"
 
     - name: Build Koncur
       shell: bash
@@ -207,13 +231,12 @@ runs:
       run: |
         koncur run tests -t kantra -o yaml --output-file test.yaml
 
-
     - name: Upload output on failure
       if: failure()
       uses: actions/upload-artifact@v4
       with:
         name: koncur-kantra-${{ inputs.os }}-failures
-        path: .koncur/output 
+        path: .koncur/output
         retention-days: 5
         include-hidden-files: true
 

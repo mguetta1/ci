@@ -2,25 +2,66 @@ name: Run Koncur with tackle-hub config e2e
 
 on:
   workflow_call:
-    # There should be no need to pass in anything as we should have all we need
-    # based on the github context
-  workflow_dispatch:
     inputs:
-      repo:
-        description: |
-          This is the repo to simulate the testing from.
-      ref:
-        description: |
-          The ref that should be tested from. Could be a branch or PR. that should be used to pull all konveyor related repos.
-          For example, if you wanted to set a nightly build for release-0.8, you would specify
-          "release-0.8".
+      skip_build:
+        description: "Skip building images, use existing release images from quay.io"
+        required: false
+        type: boolean
+        default: false
+      image_tag:
+        description: "Image tag to use when skip_build=true (e.g., 'latest', 'release-0.9')"
         required: false
         type: string
-        default: main 
+      repo:
+        description: "Repository to build images from (used when skip_build=false)"
+        required: false
+        type: string
+      ref:
+        description: "Ref to build images from (used when skip_build=false)"
+        required: false
+        type: string
+      koncur_repo:
+        description: "Koncur repository to checkout (e.g., 'mguetta1/koncur' for forks)"
+        required: false
+        type: string
+        default: konveyor/koncur
+      koncur_ref:
+        description: "Koncur ref to checkout (e.g., branch, tag, or SHA)"
+        required: false
+        type: string
+  workflow_dispatch:
+    inputs:
+      skip_build:
+        description: "Skip building images, use existing release images from quay.io"
+        required: false
+        type: boolean
+        default: false
+      image_tag:
+        description: "Image tag to use when skip_build=true (e.g., 'latest', 'release-0.9')"
+        required: false
+        type: string
+      repo:
+        description: "Repository to build images from (used when skip_build=false)"
+        required: false
+        type: string
+      ref:
+        description: "Ref to build images from (used when skip_build=false)"
+        required: false
+        type: string
+        default: main
+      koncur_repo:
+        description: "Koncur repository to checkout (e.g., 'mguetta1/koncur' for forks)"
+        required: false
+        type: string
+      koncur_ref:
+        description: "Koncur ref to checkout"
+        required: false
+        type: string
 
 jobs:
 
   build-images:
+    if: ${{ !inputs.skip_build }}
     uses: ./.github/workflows/e2e-image-build.yaml
     with:
       repo: ${{ inputs.repo || github.repository }}
@@ -29,11 +70,14 @@ jobs:
 
   run-koncur-action:
     runs-on: ubuntu-latest
-    needs: build-images
+    needs:
+      - build-images
+    if: ${{ always() && (needs.build-images.result == 'success' || needs.build-images.result == 'skipped') }}
     steps:
       - name: Run Koncur Testing
         uses: konveyor/ci/koncur-tackle-hub@main
         with:
-          image_pattern: |
-            *{tackle-keycloak-init,tackle2-*,provider}--${{ github.run_id }}
-          ref: ${{ github.base_ref || inputs.ref || github.ref_name}}
+          image_pattern: ${{ !inputs.skip_build && format('*{{tackle-keycloak-init,tackle2-*,provider}}--{0}', github.run_id) || '' }}
+          image_tag: ${{ inputs.skip_build && inputs.image_tag || '' }}
+          koncur_repo: ${{ inputs.koncur_repo || 'konveyor/koncur' }}
+          ref: ${{ inputs.koncur_ref || github.base_ref || inputs.ref || github.ref_name }}

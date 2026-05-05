@@ -90,7 +90,7 @@ jobs:
     steps:
       - name: Run Koncur Testing
         id: koncur-test
-        uses: konveyor/ci/koncur-kantra@main
+        uses: mguetta1/ci/koncur-kantra@koncur-reusable-workflow
         with:
           os: ${{ matrix.os.os }}
           image_pattern: ${{ !inputs.skip_build && format('*{{kantra,provider}}--{0}', github.run_id) || '' }}

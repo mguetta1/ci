@@ -75,7 +75,7 @@ jobs:
     if: ${{ always() && (needs.build-images.result == 'success' || needs.build-images.result == 'skipped') }}
     steps:
       - name: Run Koncur Testing
-        uses: konveyor/ci/koncur-tackle-hub@main
+        uses: mguetta1/ci/koncur-tackle-hub@koncur-reusable-workflow
         with:
           image_pattern: ${{ !inputs.skip_build && format('*{{tackle-keycloak-init,tackle2-*,provider}}--{0}', github.run_id) || '' }}
           image_tag: ${{ inputs.skip_build && inputs.image_tag || '' }}

@@ -1,6 +1,9 @@
 name: Run Koncur nightly (Release 0.9)
 
 on:
+  push:
+    branches:
+      - koncur-hub-in-release-0.9
   schedule:
     - cron: "5 3 * * *"
   workflow_call:

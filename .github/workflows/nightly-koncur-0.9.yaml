@@ -135,17 +135,10 @@ jobs:
 ## Now we need to test full e2e kantra, kai, and the ui/operator.
 ## The e2e tests for these, should be in the repos, because an end user
 ## may need to debug them. 
-# # For now, to get this workflow working, and show it, I will create the matrix
-#
-## To start, I am going to add back something that looks like the API tests
-## And something that looks like the UI tests.  
-#
-# This will just do kantra testing on the images now.
-#
-#
+
   run-koncur-kantra-action:
     if: ${{ !cancelled() && !failure() }}
-    needs: 
+    needs:
     - build-images
     - build-level1-images
     - build-level2-images
@@ -154,7 +147,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: 
+        os:
           - os: "linux"
             runner: "ubuntu-24.04-arm"
           - os: "macos"
@@ -162,7 +155,7 @@ jobs:
           - os: "windows"
             runner: "windows-latest"
         exclude:
-          - os: 
+          - os:
               os: "macos"
               runner: "macos-26-large"
     runs-on: ${{ matrix.os.runner }}
@@ -176,8 +169,27 @@ jobs:
             *{kantra,provider}--${{ needs.nightly-tag.outputs.tag }}
           ref: ${{ inputs.branch || 'release-0.9' }}
 
+  run-koncur-tackle-hub-action:
+    if: ${{ !cancelled() && !failure() }}
+    needs:
+    - build-images
+    - build-level1-images
+    - build-level2-images
+    - build-level3-images
+    - nightly-tag
+    runs-on: ubuntu-latest
+    steps:
+      - name: Run Koncur hub tests
+        id: koncur-test
+        uses: konveyor/ci/koncur-tackle-hub@release-0.9
+        with:
+          image_pattern: |
+            *{tackle-keycloak-init,tackle2-*,provider}--${{ needs.nightly-tag.outputs.tag }}
+          ref: ${{ inputs.branch || 'release-0.9' }}
+
   report_failure:
     needs:
+    - run-koncur-tackle-hub-action
     - run-koncur-kantra-action
     if: ${{ always() && contains(needs.*.result, 'failure') }}
     runs-on: ubuntu-latest

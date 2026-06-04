@@ -89,6 +89,29 @@ jobs:
             | jq -c '[.comments[] | select(.body | startswith("/ci test-with")) | .body | ltrimstr("/ci test-with ")]')
           echo "overrides=$OVERRIDES" >> $GITHUB_OUTPUT
 
+      - name: Determine matrix config file
+        id: matrix_config
+        shell: bash
+        run: |
+          BASE_REF="${{ github.base_ref || github.ref_name }}"
+
+          # Check if this is a release branch (e.g., release-0.9)
+          if [[ "$BASE_REF" =~ ^release-([0-9]+\.[0-9]+)$ ]]; then
+            VERSION="${BASH_REMATCH[1]}"
+            RELEASE_CONFIG=".github/workflows/nightly-matrix-config-${VERSION}.yaml"
+
+            if [[ -f "$RELEASE_CONFIG" ]]; then
+              echo "Using release config: $RELEASE_CONFIG"
+              echo "config_file=$RELEASE_CONFIG" >> $GITHUB_OUTPUT
+            else
+              echo "Warning: $RELEASE_CONFIG not found, falling back to main config"
+              echo "config_file=.github/workflows/nightly-matrix-config.yaml" >> $GITHUB_OUTPUT
+            fi
+          else
+            echo "Using main config for branch: $BASE_REF"
+            echo "config_file=.github/workflows/nightly-matrix-config.yaml" >> $GITHUB_OUTPUT
+          fi
+
       - name: Prepare matrix configs
         id: prepare
         shell: bash
@@ -103,7 +126,7 @@ jobs:
 
           cmd=(
             python scripts/parse_matrix_config.py
-            .github/workflows/nightly-matrix-config.yaml
+            ${{ steps.matrix_config.outputs.config_file }}
             -t "${{ inputs.tag || github.run_id }}"
             -b "${{ github.base_ref || github.ref_name }}"
             -r "${{ inputs.repo || github.repository }}"

@@ -2,8 +2,17 @@ name: Run Koncur with kantra config e2e
 
 on:
   workflow_call:
-    # There should be no need to pass in anything as we should have all we need
-    # based on the github context
+    inputs:
+      ci_repo:
+        description: Repository for CI actions (e.g., konveyor/ci or fork)
+        required: false
+        type: string
+        default: konveyor/ci
+      ci_ref:
+        description: Ref of CI repo to use for composite actions
+        required: false
+        type: string
+        default: main
   workflow_dispatch:
     inputs:
       repo:
@@ -16,7 +25,17 @@ on:
           "release-0.8".
         required: false
         type: string
-        default: main 
+        default: main
+      ci_repo:
+        description: Repository for CI actions (e.g., konveyor/ci or fork)
+        required: false
+        type: string
+        default: konveyor/ci
+      ci_ref:
+        description: Ref of CI repo to use for composite actions
+        required: false
+        type: string
+        default: main
 
 jobs:
 
@@ -41,14 +60,21 @@ jobs:
           - os: "windows"
             runner: "windows-latest"
         exclude:
-          - os: 
+          - os:
               os: "macos"
               runner: "macos-26-large"
     runs-on: ${{ matrix.os.runner }}
     steps:
+      - name: Checkout CI repo
+        uses: actions/checkout@v6
+        with:
+          repository: ${{ inputs.ci_repo || 'konveyor/ci' }}
+          ref: ${{ inputs.ci_ref || 'main' }}
+          path: ci-repo
+
       - name: Run Koncur Testing
         id: koncur-test
-        uses: konveyor/ci/koncur-kantra@main
+        uses: ./ci-repo/koncur-kantra
         with:
           os: ${{ matrix.os.os }}
           image_pattern: |

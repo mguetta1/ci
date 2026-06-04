@@ -150,23 +150,21 @@ if [ ${#MISSING[@]} -gt 0 ]; then
 
     # Check if any downloads succeeded
     if [ $DOWNLOAD_SUCCESS -eq 0 ]; then
-        # Fallback: try using IMAGE_TAG if provided
-        if [ -n "$IMAGE_TAG" ]; then
-            echo ""
-            echo "Nightly download failed, trying fallback tag: $IMAGE_TAG"
+        # Fallback: try pulling images tagged with BASE_REF
+        echo ""
+        echo "Nightly download failed, trying fallback tag: $BASE_REF"
 
-            for img in "${MISSING[@]}"; do
-                echo "Pulling $img:$IMAGE_TAG..."
-                if docker pull "$img:$IMAGE_TAG"; then
-                    DOWNLOAD_SUCCESS=1
-                    echo "Successfully pulled $img:$IMAGE_TAG"
-                    # Load the pulled image into Kind
-                    kind load docker-image "$img:$IMAGE_TAG" --name "${CLUSTER_NAME:-koncur-test}"
-                else
-                    echo "Warning: Could not pull $img:$IMAGE_TAG"
-                fi
-            done
-        fi
+        for img in "${MISSING[@]}"; do
+            echo "Pulling $img:$BASE_REF..."
+            if docker pull "$img:$BASE_REF"; then
+                DOWNLOAD_SUCCESS=1
+                echo "Successfully pulled $img:$BASE_REF"
+                # Load the pulled image into Kind
+                kind load docker-image "$img:$BASE_REF" --name "${CLUSTER_NAME:-koncur-test}"
+            else
+                echo "Warning: Could not pull $img:$BASE_REF"
+            fi
+        done
 
         if [ $DOWNLOAD_SUCCESS -eq 0 ]; then
             echo ""

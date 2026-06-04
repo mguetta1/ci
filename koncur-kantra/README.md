@@ -207,6 +207,7 @@ If `image_pattern` is provided:
 
 If image download fails or no pattern is provided:
 - Falls back to `check_images.sh` which downloads from the last successful nightly build
+- If nightly artifacts are unavailable (expired), falls back to pulling images tagged with the target branch (e.g., `release-0.9`, `main`) from quay.io
 
 ### 3. Kantra Installation
 

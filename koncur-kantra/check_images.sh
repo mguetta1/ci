@@ -118,10 +118,7 @@ if [ ${#MISSING[@]} -gt 0 ]; then
         
         # Use a more specific pattern that excludes architecture suffixes
         # We want artifacts that end with a date pattern, not _amd64/_arm64
-        OUTPUT=$(gh run download -R=konveyor/ci "$WORKFLOW_RUN" --pattern "$PATTERN" --dir "$TEMP_DIR" 2>&1)
-        EXIT_CODE=$?
-        
-        if [ $EXIT_CODE -eq 0 ]; then
+        if OUTPUT=$(gh run download -R=konveyor/ci "$WORKFLOW_RUN" --pattern "$PATTERN" --dir "$TEMP_DIR" 2>&1); then
             DOWNLOAD_SUCCESS=1
             echo "Successfully downloaded artifact for $img"
         else

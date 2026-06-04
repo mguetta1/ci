@@ -150,10 +150,30 @@ if [ ${#MISSING[@]} -gt 0 ]; then
 
     # Check if any downloads succeeded
     if [ $DOWNLOAD_SUCCESS -eq 0 ]; then
-        echo ""
-        echo "Error: No artifacts were successfully downloaded (they may have expired)"
-        rm -rf "$TEMP_DIR"
-        exit 1
+        # Fallback: try using IMAGE_TAG if provided
+        if [ -n "$IMAGE_TAG" ]; then
+            echo ""
+            echo "Nightly download failed, trying fallback tag: $IMAGE_TAG"
+
+            for img in "${MISSING[@]}"; do
+                echo "Pulling $img:$IMAGE_TAG..."
+                if docker pull "$img:$IMAGE_TAG"; then
+                    DOWNLOAD_SUCCESS=1
+                    echo "Successfully pulled $img:$IMAGE_TAG"
+                    # Load the pulled image into Kind
+                    kind load docker-image "$img:$IMAGE_TAG" --name "${CLUSTER_NAME:-koncur-test}"
+                else
+                    echo "Warning: Could not pull $img:$IMAGE_TAG"
+                fi
+            done
+        fi
+
+        if [ $DOWNLOAD_SUCCESS -eq 0 ]; then
+            echo ""
+            echo "Error: No artifacts were successfully downloaded (they may have expired) and no fallback tag succeeded"
+            rm -rf "$TEMP_DIR"
+            exit 1
+        fi
     fi
 
     # Load downloaded images into Kind cluster and optionally re-tag

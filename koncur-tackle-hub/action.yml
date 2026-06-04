@@ -10,6 +10,10 @@ on:
         description: The pattern used to download the image's that have been built to test
         required: false
         type: string
+      image_tag:
+        description: Fallback tag to pull images from quay.io if nightly artifact download fails (e.g., release-0.9)
+        required: false
+        type: string
       ref:
         description: The ref of koncur to use for testing
         required: false
@@ -75,6 +79,7 @@ runs:
       env:
         GH_TOKEN: ${{ github.token }}
         BASE_REF: ${{ github.base_ref || github.ref_name }}
+        IMAGE_TAG: ${{ inputs.image_tag }}
       shell: bash
       run: |
         ${GITHUB_ACTION_PATH}/check_images.sh

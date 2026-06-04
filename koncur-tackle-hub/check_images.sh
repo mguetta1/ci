@@ -85,8 +85,25 @@ if [ ${#MISSING[@]} -gt 0 ]; then
 
     echo "Attempting to download missing images from last successful nightly run..."
 
-    # Find the last successful run of the nightly workflow on main branch
-    WORKFLOW_RUN=$(gh run list -R=konveyor/ci --workflow=nightly-koncur.yaml --branch=main --status=success --limit=1 --json databaseId --jq '.[0].databaseId')
+    # Determine which nightly workflow to use based on the target branch
+    BASE_REF="${BASE_REF:-main}"
+    if [[ "$BASE_REF" =~ ^release-([0-9]+\.[0-9]+)$ ]]; then
+        VERSION="${BASH_REMATCH[1]}"
+        NIGHTLY_WORKFLOW="nightly-koncur-${VERSION}.yaml"
+        echo "Trying release nightly workflow: $NIGHTLY_WORKFLOW"
+        WORKFLOW_RUN=$(gh run list -R=konveyor/ci --workflow="$NIGHTLY_WORKFLOW" --branch=main --status=success --limit=1 --json databaseId --jq '.[0].databaseId')
+        if [ -z "$WORKFLOW_RUN" ]; then
+            echo "No successful run found for $NIGHTLY_WORKFLOW, falling back to nightly-koncur.yaml"
+            NIGHTLY_WORKFLOW="nightly-koncur.yaml"
+        fi
+    else
+        NIGHTLY_WORKFLOW="nightly-koncur.yaml"
+        echo "Using main nightly workflow: $NIGHTLY_WORKFLOW"
+    fi
+
+    if [ -z "$WORKFLOW_RUN" ]; then
+        WORKFLOW_RUN=$(gh run list -R=konveyor/ci --workflow="$NIGHTLY_WORKFLOW" --branch=main --status=success --limit=1 --json databaseId --jq '.[0].databaseId')
+    fi
 
     if [ -z "$WORKFLOW_RUN" ]; then
         echo "Error: Could not find a successful nightly workflow run"

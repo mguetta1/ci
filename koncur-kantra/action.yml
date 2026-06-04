@@ -93,6 +93,7 @@ runs:
       if: ${{ steps.download-artifacts.outcome == 'failure' || steps.download-artifacts.outcome == 'success' }}
       env:
         GH_TOKEN: ${{ github.token }}
+        BASE_REF: ${{ github.base_ref || github.ref_name }}
       shell: bash
       run: |
         ${GITHUB_ACTION_PATH}/check_images.sh

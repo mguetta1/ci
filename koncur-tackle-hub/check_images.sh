@@ -172,9 +172,56 @@ if [ ${#MISSING[@]} -gt 0 ]; then
             echo "Pulling $img:$BASE_REF..."
             if docker pull "$img:$BASE_REF"; then
                 DOWNLOAD_SUCCESS=1
-                echo "Successfully pulled $img:$BASE_REF"
+                PULLED_TAG="$img:$BASE_REF"
+                echo "Successfully pulled $PULLED_TAG"
                 # Load the pulled image into Kind
-                kind load docker-image "$img:$BASE_REF" --name "${CLUSTER_NAME:-koncur-test}"
+                kind load docker-image "$PULLED_TAG" --name "${CLUSTER_NAME:-koncur-test}"
+
+                # Set env vars for pulled images (no tar files created, so set here directly)
+                if [[ "$img" =~ $kantra_image_regex ]]; then
+                    echo "Kantra Image Found Set Env Var: RUNNER_IMG=$PULLED_TAG"
+                    echo "RUNNER_IMG=$PULLED_TAG" >> $GITHUB_ENV
+                fi
+                if [[ "$img" =~ $java_provider_image_regex ]]; then
+                    echo "Java Provider Image Found Set Env Var: JAVA_PROVIDER_IMG=$PULLED_TAG"
+                    echo "JAVA_PROVIDER_IMG=$PULLED_TAG" >> $GITHUB_ENV
+                fi
+                if [[ "$img" =~ $c_sharp_provider_image_regex ]]; then
+                    echo "C Sharp Provider Found Set Env Var: CSHARP_PROVIDER_IMG=$PULLED_TAG"
+                    echo "CSHARP_PROVIDER_IMG=$PULLED_TAG" >> $GITHUB_ENV
+                fi
+                if [[ "$img" =~ $generic_provider_image_regex ]]; then
+                    echo "Generic Provider Image Found Set Env Var: GENERIC_PROVIDER_IMG=$PULLED_TAG"
+                    echo "GENERIC_PROVIDER_IMG=$PULLED_TAG" >> $GITHUB_ENV
+                fi
+                if [[ "$img" =~ $go_provider_image_regex ]]; then
+                    echo "Go Provider Image Found Set Env Var: GO_PROVIDER_IMG=$PULLED_TAG"
+                    echo "GO_PROVIDER_IMG=$PULLED_TAG" >> $GITHUB_ENV
+                fi
+                if [[ "$img" =~ $python_provider_image_regex ]]; then
+                    echo "Python Provider Image Found Set Env Var: PYTHON_PROVIDER_IMG=$PULLED_TAG"
+                    echo "PYTHON_PROVIDER_IMG=$PULLED_TAG" >> $GITHUB_ENV
+                fi
+                if [[ "$img" =~ $nodejs_provider_image_regex ]]; then
+                    echo "Node.js Provider Image Found Set Env Var: NODEJS_PROVIDER_IMG=$PULLED_TAG"
+                    echo "NODEJS_PROVIDER_IMG=$PULLED_TAG" >> $GITHUB_ENV
+                fi
+                if [[ "$img" =~ $hub_regex ]]; then
+                    echo "Hub Image Found Set Env Var: HUB=$PULLED_TAG"
+                    echo "HUB=$PULLED_TAG" >> $GITHUB_ENV
+                fi
+                if [[ "$img" =~ $addon_regex ]]; then
+                    echo "Addon-Analyzer Image Found Set Env Var: ANALYZER_ADDON=$PULLED_TAG"
+                    echo "ANALYZER_ADDON=$PULLED_TAG" >> $GITHUB_ENV
+                fi
+                if [[ "$img" =~ $addon_discovery ]]; then
+                    echo "Discovery Addon Image Found Set Env Var: DISCOVERY_ADDON=$PULLED_TAG"
+                    echo "DISCOVERY_ADDON=$PULLED_TAG" >> $GITHUB_ENV
+                fi
+                if [[ "$img" =~ $addon_platform ]]; then
+                    echo "Platform Addon Image Found Set Env Var: PLATFORM_ADDON=$PULLED_TAG"
+                    echo "PLATFORM_ADDON=$PULLED_TAG" >> $GITHUB_ENV
+                fi
             else
                 echo "Warning: Could not pull $img:$BASE_REF"
             fi
@@ -188,7 +235,9 @@ if [ ${#MISSING[@]} -gt 0 ]; then
         fi
     fi
 
-    # Load downloaded images into Kind cluster and optionally re-tag
+    # Load downloaded images into Kind cluster and optionally re-tag.
+    # This processes tar files from successful nightly artifact downloads.
+    # (Fallback pull sets env vars directly above since no tar files are created)
     echo ""
     echo "Loading downloaded images into Kind cluster..."
     CLUSTER_NAME=${CLUSTER_NAME:-koncur-test}

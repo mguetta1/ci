@@ -2,17 +2,33 @@
 
 set -e
 
-REQUIRED_IMAGES=(
-    "quay.io/konveyor/tackle2-hub"
-    "quay.io/konveyor/tackle2-addon-analyzer"
-    "quay.io/konveyor/tackle2-addon-discovery"
-    "quay.io/konveyor/tackle2-addon-platform"
-    "quay.io/konveyor/c-sharp-provider"
-    "quay.io/konveyor/java-external-provider"
-    "quay.io/konveyor/go-external-provider"
-    "quay.io/konveyor/python-external-provider"
-    "quay.io/konveyor/nodejs-external-provider"
-)
+BASE_REF="${BASE_REF:-main}"
+
+if [ "$BASE_REF" == "release-0.9" ]; then
+    echo "Detected release-0.9 branch - using generic-external-provider"
+    REQUIRED_IMAGES=(
+        "quay.io/konveyor/tackle2-hub"
+        "quay.io/konveyor/tackle2-addon-analyzer"
+        "quay.io/konveyor/tackle2-addon-discovery"
+        "quay.io/konveyor/tackle2-addon-platform"
+        "quay.io/konveyor/c-sharp-provider"
+        "quay.io/konveyor/java-external-provider"
+        "quay.io/konveyor/generic-external-provider"
+    )
+else
+    REQUIRED_IMAGES=(
+        "quay.io/konveyor/tackle2-hub"
+        "quay.io/konveyor/tackle2-addon-analyzer"
+        "quay.io/konveyor/tackle2-addon-discovery"
+        "quay.io/konveyor/tackle2-addon-platform"
+        "quay.io/konveyor/c-sharp-provider"
+        "quay.io/konveyor/java-external-provider"
+        "quay.io/konveyor/go-external-provider"
+        "quay.io/konveyor/python-external-provider"
+        "quay.io/konveyor/nodejs-external-provider"
+    )
+fi
+
 hub_regex=".*tackle2-hub.*"
 addon_regex=".*tackle2-addon-analyzer.*"
 addon_discovery=".*tackle2-addon-discovery.*"
@@ -20,6 +36,7 @@ addon_platform=".*tackle2-addon-platform.*"
 kantra_image_regex=".*kantra.*"
 java_provider_image_regex=".*java(-external)?-provider.*"
 c_sharp_provider_image_regex=".*c-sharp-provider.*"
+generic_provider_image_regex=".*generic(-external)?-provider.*"
 go_provider_image_regex=".*go(-external)?-provider.*"
 python_provider_image_regex=".*python(-external)?-provider.*"
 nodejs_provider_image_regex=".*nodejs(-external)?-provider.*"
@@ -224,6 +241,10 @@ if [ ${#MISSING[@]} -gt 0 ]; then
         if [[ "$image" =~ $c_sharp_provider_image_regex ]]; then
             echo "C Sharp Provider Found Set Env Var: CSHARP_PROVIDER_IMG=$NEW_TAG"
             echo "CSHARP_PROVIDER_IMG=$NEW_TAG" >> $GITHUB_ENV
+        fi
+        if [[ "$image" =~ $generic_provider_image_regex ]]; then
+            echo "Generic Provider Image Found Set Env Var: GENERIC_PROVIDER_IMG=$NEW_TAG"
+            echo "GENERIC_PROVIDER_IMG=$NEW_TAG" >> $GITHUB_ENV
         fi
         if [[ "$image" =~ $go_provider_image_regex ]]; then
             echo "Go Provider Image Found Set Env Var: GO_PROVIDER_IMG=$NEW_TAG"

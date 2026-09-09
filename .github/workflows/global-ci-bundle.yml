@@ -23,6 +23,14 @@ on:
         type: string
         required: false
         default: "latest"
+      ref:
+        description: |
+          Git branch or tag to use for operator deployment (e.g., main, release-0.9).
+          This is used to fetch tackle-k8s.yaml from the operator repository.
+          Defaults to 'main'. For testing against release branches, pass the branch name explicitly.
+        type: string
+        required: false
+        default: "main"
       oauth_proxy:
         description: image uri for oauth_proxy (ie. quay.io/<namespace>/<image-name>:<tag>)
         type: string
@@ -533,7 +541,7 @@ jobs:
       - name: Run Koncur Hub tests
         uses: ./koncur-tackle-hub
         with:
-          ref: ${{ inputs.base_tag }}
+          ref: ${{ inputs.ref || 'main' }}
           koncur_ref: ${{ needs.extract-koncur-ref.outputs.koncur_ref }}
           skip_maven: ${{ inputs.koncur_skip_maven }}
 

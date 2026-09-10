@@ -1,10 +1,6 @@
 name: Konveyor e2e CI via Operator Bundle shared workflow
 
 on:
-  pull_request:
-    types: [opened, reopened, edited]
-    paths:
-      - '.github/workflows/global-ci-bundle.yml'
   workflow_call:
     inputs:
       artifact:

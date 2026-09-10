@@ -168,12 +168,12 @@ on:
         description: A flag that determines whether the koncur tackle-hub tests should be run
         type: boolean
         required: false
-        default: false
+        default: true
       run_koncur_kantra_tests:
         description: A flag that determines whether the koncur kantra tests should be run
         type: boolean
         required: false
-        default: false
+        default: true
 #     See https://github.com/konveyor/ci/issues/224
       run_windows_kantra_tests:
         description: A flag that determines whether to run Windows kantra tests (Linux always runs if run_koncur_kantra_tests is true)
